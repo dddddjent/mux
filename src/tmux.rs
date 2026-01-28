@@ -157,6 +157,16 @@ impl Tmux {
         }
     }
 
+    pub fn remove_window(&self, window: &str) {
+        let err = Command::new("tmux")
+            .args(["kill-window", "-t", window])
+            .output()
+            .err();
+        if let Some(err) = err {
+            panic!("failed to exec tmux: {err}");
+        }
+    }
+
     pub fn split_window(
         &self,
         window: &str,

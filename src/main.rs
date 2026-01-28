@@ -51,8 +51,8 @@ fn start(config_name: &str) {
     for window in windows {
         match window {
             config::Window::WindowWithPanes(mp) => {
-                for (window_name, cmd) in mp {
-                    match cmd {
+                for (window_name, cmd_pane) in mp {
+                    match cmd_pane {
                         config::CmdPanes::Panes(panes) => {
                             t.add_window(&window_name, &panes.root);
                             for (i, pane) in panes.panes.iter().enumerate() {
@@ -111,6 +111,7 @@ fn start(config_name: &str) {
             }
         }
     }
+    t.remove_window(&format!("{}:{}", &cfg.name, "0"));
 
     t.attach_or_switch();
 }
