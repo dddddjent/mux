@@ -172,10 +172,19 @@ impl Tmux {
         };
 
         let out = Command::new("tmux")
-            .args(["split-window", "-t", window, split_method])
+            .args([
+                "split-window",
+                "-t",
+                window,
+                split_method,
+                "-P",
+                "-F",
+                "#{pane_index}",
+            ])
             .output();
         if let Ok(out) = out {
-            let id: String = String::from_utf8_lossy(&out.stdout).to_string();
+            let mut id: String = String::from_utf8_lossy(&out.stdout).to_string();
+            id = id.trim_end().to_string();
             let name = if let Some(name) = name {
                 name
             } else {
