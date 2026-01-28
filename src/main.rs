@@ -72,7 +72,7 @@ fn start(config_name: &str) {
                                                 &panes.layout.as_ref(),
                                             )
                                         };
-                                        println!("{}", pane_id);
+                                        // println!("{}", pane_id);
                                         for cmd in cmds {
                                             t.send_cmd(
                                                 &format!(
@@ -93,7 +93,7 @@ fn start(config_name: &str) {
                                                 &panes.layout.as_ref(),
                                             )
                                         };
-                                        println!("{}", pane_id);
+                                        // println!("{}", pane_id);
                                         t.send_cmd(
                                             &format!("{}:{}.{}", &cfg.name, &window_name, &pane_id),
                                             cmd,

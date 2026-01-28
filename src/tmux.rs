@@ -109,23 +109,23 @@ impl Tmux {
         let out = Command::new("tmux")
             .args(["has-session", "-t", &self.session])
             .output();
-        println!("out: {out:?}");
+        // println!("out: {out:?}");
         let out = String::from_utf8(out.unwrap().stderr).unwrap();
-        println!("{}", out.contains("can't find session"));
+        // println!("{}", out.contains("can't find session"));
         return !out.contains("can't find session") && !out.contains("no server running");
     }
 
     pub fn attach_or_switch(&self) {
         let err = if Self::is_in_tmux() {
             Command::new("tmux")
-                .args(["switch-session", "-t", &self.session])
+                .args(["switch-client", "-t", &self.session])
                 .exec()
         } else {
             Command::new("tmux")
                 .args(["attach", "-t", &self.session])
                 .exec()
         };
-        eprintln!("failed to exec tmux: {err}");
+        panic!("failed to exec tmux: {err}");
     }
 
     pub fn add_window(&self, name: &str, dir: &Option<String>) {
@@ -245,7 +245,7 @@ impl Tmux {
         let err = Command::new("tmux")
             .args(["kill-session", "-t", &session])
             .exec();
-        eprintln!("failed to exec tmux: {err}");
+        panic!("failed to exec tmux: {err}");
     }
 
     pub fn kill_window() {
