@@ -109,10 +109,10 @@ impl Tmux {
         let out = Command::new("tmux")
             .args(["has-session", "-t", &self.session])
             .output();
-        // println!("out: {out:?}");
+        println!("out: {out:?}");
         let out = String::from_utf8(out.unwrap().stderr).unwrap();
-        // println!("{}", out.contains("can't find session"));
-        return !out.contains("can't find session");
+        println!("{}", out.contains("can't find session"));
+        return !out.contains("can't find session") && !out.contains("no server running");
     }
 
     pub fn attach_or_switch(&self) {
