@@ -1,0 +1,25 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+# Needed to create/update releases + upload assets
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build
+        run: cargo build --target x86_64-unknown-linux-musl --release
+
+      - name: Publish GitHub Release + upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/x86_64-unknown-linux-musl/release/mux
