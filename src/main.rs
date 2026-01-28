@@ -55,16 +55,20 @@ fn start(config_name: &str) {
                     match cmd {
                         config::CmdPanes::Panes(panes) => {
                             t.add_window(&window_name, &panes.root);
-                            for pane in &panes.panes {
+                            for (i, pane) in panes.panes.iter().enumerate() {
                                 match pane {
                                     config::Pane::PaneWithCommands(mp) => {
                                         assert!(mp.len() == 1);
                                         let (pane_name, cmds) = mp.iter().next().unwrap();
-                                        let pane_id = t.split_window(
-                                            &format!("{}:{}", &cfg.name, &window_name),
-                                            Some(pane_name),
-                                            &panes.layout.as_ref(),
-                                        );
+                                        let pane_id = if i == 0 {
+                                            String::from("0")
+                                        } else {
+                                            t.split_window(
+                                                &format!("{}:{}", &cfg.name, &window_name),
+                                                Some(pane_name),
+                                                &panes.layout.as_ref(),
+                                            )
+                                        };
                                         println!("{}", pane_id);
                                         for cmd in cmds {
                                             t.send_cmd(
@@ -77,11 +81,15 @@ fn start(config_name: &str) {
                                         }
                                     }
                                     config::Pane::Command(cmd) => {
-                                        let pane_id = t.split_window(
-                                            &format!("{}:{}", &cfg.name, &window_name),
-                                            None,
-                                            &panes.layout.as_ref(),
-                                        );
+                                        let pane_id = if i == 0 {
+                                            String::from("0")
+                                        } else {
+                                            t.split_window(
+                                                &format!("{}:{}", &cfg.name, &window_name),
+                                                None,
+                                                &panes.layout.as_ref(),
+                                            )
+                                        };
                                         println!("{}", pane_id);
                                         t.send_cmd(
                                             &format!("{}:{}.{}", &cfg.name, &window_name, &pane_id),
