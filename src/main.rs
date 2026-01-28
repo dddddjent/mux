@@ -34,7 +34,10 @@ enum Command {
 
 fn start(config_name: &str) {}
 
-fn remove(config_name: &str) {}
+fn remove(config_name: &str) {
+    config::remove_config(config_name);
+    println!("removed config: {config_name}");
+}
 
 fn main() {
     let cli = Cli::parse();

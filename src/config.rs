@@ -122,3 +122,9 @@ pub fn open_or_create_config(config_name: &str) {
         .exec();
     panic!("failed to exec editor: {err}");
 }
+
+pub fn remove_config(config_name: &str) {
+    if let Err(e) = std::fs::remove_file(config_dir().join(format!("{}.yml", config_name))) {
+        panic!("failed to remove config: {e}");
+    }
+}
