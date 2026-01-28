@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::{env, io};
 
+use crate::util::xdg_config_home;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub name: String,
@@ -15,8 +17,15 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Window {
-    WindowWithPanes(BTreeMap<String, Panes>),
+    WindowWithPanes(BTreeMap<String, CmdPanes>),
     WindowName(String),
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(untagged)]
+pub enum CmdPanes {
+    Panes(Panes),
+    Command(String),
 }
 
 fn default_layout() -> Option<String> {
@@ -25,9 +34,11 @@ fn default_layout() -> Option<String> {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Panes {
-    panes: Vec<Pane>,
+    pub panes: Vec<Pane>,
     #[serde(default = "default_layout")]
-    layout: Option<String>,
+    pub layout: Option<String>,
+    #[serde(default)]
+    pub root: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -45,23 +56,25 @@ impl Config {
             windows: vec![
                 Window::WindowWithPanes(BTreeMap::from([(
                     "editor".to_string(),
-                    Panes {
+                    CmdPanes::Panes(Panes {
                         panes: vec![Pane::PaneWithCommands(BTreeMap::from([(
                             "editor".to_string(),
                             vec!["nvim".to_string(), ":RestoreSession".to_string()],
                         )]))],
                         layout: None,
-                    },
+                        root: None,
+                    }),
                 )])),
                 Window::WindowWithPanes(BTreeMap::from([(
                     "misc".to_string(),
-                    Panes {
+                    CmdPanes::Panes(Panes {
                         panes: vec![
                             Pane::Command("clear".to_string()),
                             Pane::Command("clear".to_string()),
                         ],
                         layout: Some("even-horizontal".to_string()),
-                    },
+                        root: None,
+                    }),
                 )])),
             ],
         }
@@ -70,16 +83,6 @@ impl Config {
 
 pub fn config_dir() -> PathBuf {
     xdg_config_home().join("mux")
-}
-
-pub fn xdg_config_home() -> PathBuf {
-    if let Some(p) = env::var_os("XDG_CONFIG_HOME") {
-        if !p.is_empty() {
-            return PathBuf::from(p);
-        }
-    }
-    let home = env::var_os("HOME").unwrap_or_default();
-    PathBuf::from(home).join(".config")
 }
 
 pub fn parse_config(config_name: &str) -> Result<Config, Box<dyn std::error::Error>> {

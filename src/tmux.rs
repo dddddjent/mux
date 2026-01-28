@@ -1,6 +1,8 @@
-use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
+use std::{env, io};
+
+use crate::util::{expand_tilde, home_dir};
 
 pub struct Tmux {
     pub session: String,
@@ -10,16 +12,24 @@ pub struct Tmux {
 impl Tmux {
     pub fn new(session: &str, root_dir: &str) -> Tmux {
         let t = Tmux {
-            session: String::from(session), 
+            session: String::from(session),
             root_dir: Option::from(String::from(root_dir)),
         };
+        t
+    }
 
-        if t.is_session_exist() {
-            return t;
+    pub fn start_in_background(&self) {
+        if self.is_session_exist() {
+            return;
         }
 
+        let root_dir = if let Some(root_dir) = &self.root_dir {
+            root_dir
+        } else {
+            "."
+        };
         match Command::new("tmux")
-            .args(["-d", "-t", &session, "-c", &root_dir])
+            .args(["new", "-d", "-t", &self.session, "-c", root_dir])
             .output()
         {
             Ok(out) => {
@@ -27,7 +37,6 @@ impl Tmux {
             }
             Err(err) => panic!("failed to exec tmux: {err}"),
         }
-        return t;
     }
 
     fn get_current_session_name() -> io::Result<String> {
@@ -95,12 +104,14 @@ impl Tmux {
             .is_some()
     }
 
-    fn is_session_exist(&self) -> bool {
+    pub fn is_session_exist(&self) -> bool {
         let out = Command::new("tmux")
             .args(["has-session", "-t", &self.session])
             .output();
-        println!("{}", String::from_utf8_lossy(&out.as_ref().unwrap().stdout));
-        return out.unwrap().status.success();
+        // println!("out: {out:?}");
+        let out = String::from_utf8(out.unwrap().stderr).unwrap();
+        // println!("{}", out.contains("can't find session"));
+        return !out.contains("can't find session");
     }
 
     pub fn attach_or_switch(&self) {
@@ -114,6 +125,55 @@ impl Tmux {
                 .exec()
         };
         eprintln!("failed to exec tmux: {err}");
+    }
+
+    pub fn add_window(&self, name: &str, dir: &Option<String>) {
+        let root_dir = if let Some(root_dir) = dir {
+            String::from(root_dir)
+        } else {
+            if let Some(root_dir) = &self.root_dir {
+                String::from(root_dir)
+            } else {
+                home_dir()
+            }
+        };
+        let root_dir = expand_tilde(&root_dir);
+        // println!("root_dir: {root_dir}");
+        let err = Command::new("tmux")
+            .args([
+                "new-window",
+                "-t",
+                &self.session,
+                "-n",
+                name,
+                "-c",
+                &root_dir,
+            ])
+            .output()
+            .err();
+        if let Some(err) = err {
+            panic!("failed to exec tmux: {err}");
+        }
+    }
+
+    pub fn add_pane(&self, name: &str) {}
+
+    pub fn send_cmd(&self, target: &str, cmd: &str) {
+        let err = Command::new("tmux")
+            .args(["send-keys", "-t", target, "-l", cmd])
+            .output()
+            .err();
+        if let Some(err) = err {
+            panic!("failed to exec tmux: {err}");
+        }
+
+        let err = Command::new("tmux")
+            .args(["send-keys", "-t", target, "Enter"])
+            .output()
+            .err();
+        if let Some(err) = err {
+            panic!("failed to exec tmux: {err}");
+        }
     }
 
     pub fn kill_session() {

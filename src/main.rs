@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 
 mod config;
 mod tmux;
+mod util;
 
 #[derive(Parser, Debug)]
 #[command(name = "mux", version, about = "tmux orchestrator")]
@@ -32,7 +33,44 @@ enum Command {
     KillPane,
 }
 
-fn start(config_name: &str) {}
+fn start(config_name: &str) {
+    let cfg = match config::parse_config(config_name) {
+        Ok(cfg) => cfg,
+        Err(e) => panic!("failed to load config: {e}"),
+    };
+
+    let t = tmux::Tmux::new(&cfg.name, &cfg.root);
+    if t.is_session_exist() {
+        t.attach_or_switch();
+        return;
+    }
+
+    t.start_in_background();
+
+    let windows = &cfg.windows;
+    for window in windows {
+        match window {
+            config::Window::WindowWithPanes(mp) => {
+                for (name, cmd) in mp {
+                    match cmd {
+                        config::CmdPanes::Panes(panes) => {
+                            t.add_window(&name, &panes.root);
+                        }
+                        config::CmdPanes::Command(cmd) => {
+                            t.add_window(&name, &None);
+                            t.send_cmd(&format!("{}:{}", &cfg.name, &name), cmd);
+                        }
+                    }
+                }
+            }
+            config::Window::WindowName(name) => {
+                t.add_window(&name, &None);
+            }
+        }
+    }
+
+    t.attach_or_switch();
+}
 
 fn remove(config_name: &str) {
     config::remove_config(config_name);
