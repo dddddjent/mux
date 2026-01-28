@@ -85,7 +85,6 @@ pub fn xdg_config_home() -> PathBuf {
 pub fn parse_config(config_name: &str) -> Result<Config, Box<dyn std::error::Error>> {
     let s = std::fs::read_to_string(config_dir().join(format!("{}.yml", config_name)))?;
     let cfg: Config = serde_yml::from_str(&s)?;
-    println!("{:#?}", cfg);
     Ok(cfg)
 }
 

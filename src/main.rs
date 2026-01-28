@@ -13,13 +13,13 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Command {
     /// Create or open a config
-    #[command(alias = "o")]
+    #[command(alias = "o", aliases=["create", "c", "new", "n"])]
     Open { config_name: String },
 
     #[command(alias = "s")]
     Start { config_name: String },
 
-    #[command(alias = "r")]
+    #[command(alias = "r", aliases=["rm", "delete", "d"])]
     Remove { config_name: String },
 
     #[command(alias = "ks")]
