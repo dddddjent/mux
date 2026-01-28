@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Dep
+        run: rustup target add x86_64-unknown-linux-musl
+
       - name: Build
         run: cargo build --target x86_64-unknown-linux-musl --release
 
