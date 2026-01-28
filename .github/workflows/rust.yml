@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. 1.0). Must already exist on origin."
+        required: true
+        type: string
 
 # Needed to create/update releases + upload assets
 permissions:
