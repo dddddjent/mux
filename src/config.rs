@@ -138,3 +138,14 @@ pub fn remove_config(config_name: &str) {
         panic!("failed to remove config: {e}");
     }
 }
+
+pub fn list_configs() {
+    for entry in std::fs::read_dir(config_dir()).unwrap() {
+        let entry = entry.unwrap();
+        let file_name = entry.file_name();
+        let file_name = file_name.into_string().unwrap();
+        if file_name.ends_with(".yml") {
+            println!("{}", file_name.trim_end_matches(".yml"));
+        }
+    }
+}

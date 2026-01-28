@@ -23,6 +23,9 @@ enum Command {
     #[command(alias = "r", aliases=["rm", "delete", "d"])]
     Remove { config_name: String },
 
+    #[command(alias = "l", aliases=["ls"])]
+    List,
+
     #[command(alias = "ks")]
     KillSession,
 
@@ -127,6 +130,7 @@ fn main() {
         Command::Open { config_name } => config::open_or_create_config(config_name),
         Command::Start { config_name } => start(config_name),
         Command::Remove { config_name } => remove(config_name),
+        Command::List => config::list_configs(),
         Command::KillSession => tmux::Tmux::kill_session(),
         Command::KillWindow => tmux::Tmux::kill_window(),
         Command::KillPane => tmux::Tmux::kill_pane(),

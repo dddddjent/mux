@@ -1,6 +1,6 @@
+use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
-use std::{env, io};
 
 use crate::config::Layout;
 use crate::util::{expand_tilde, home_dir};
