@@ -28,15 +28,23 @@ pub enum CmdPanes {
     Command(String),
 }
 
-fn default_layout() -> Option<String> {
-    Some("even-horizontal".to_string())
+#[derive(Debug, Deserialize, Serialize)]
+pub enum Layout {
+    #[serde(rename = "even-horizontal")]
+    EvenHorizontal,
+    #[serde(rename = "even-vertical")]
+    EvenVertical,
+}
+
+fn default_layout() -> Option<Layout> {
+    Some(Layout::EvenHorizontal)
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Panes {
     pub panes: Vec<Pane>,
     #[serde(default = "default_layout")]
-    pub layout: Option<String>,
+    pub layout: Option<Layout>,
     #[serde(default)]
     pub root: Option<String>,
 }
@@ -72,7 +80,7 @@ impl Config {
                             Pane::Command("clear".to_string()),
                             Pane::Command("clear".to_string()),
                         ],
-                        layout: Some("even-horizontal".to_string()),
+                        layout: Some(Layout::EvenVertical),
                         root: None,
                     }),
                 )])),

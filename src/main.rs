@@ -51,14 +51,47 @@ fn start(config_name: &str) {
     for window in windows {
         match window {
             config::Window::WindowWithPanes(mp) => {
-                for (name, cmd) in mp {
+                for (window_name, cmd) in mp {
                     match cmd {
                         config::CmdPanes::Panes(panes) => {
-                            t.add_window(&name, &panes.root);
+                            t.add_window(&window_name, &panes.root);
+                            for pane in &panes.panes {
+                                match pane {
+                                    config::Pane::PaneWithCommands(mp) => {
+                                        assert!(mp.len() == 1);
+                                        let (pane_name, cmds) = mp.iter().next().unwrap();
+                                        let pane_id = t.split_window(
+                                            &format!("{}:{}", &cfg.name, &window_name),
+                                            Some(pane_name),
+                                            &panes.layout.as_ref(),
+                                        );
+                                        for cmd in cmds {
+                                            t.send_cmd(
+                                                &format!(
+                                                    "{}:{}.{}",
+                                                    &cfg.name, &window_name, &pane_id
+                                                ),
+                                                cmd,
+                                            )
+                                        }
+                                    }
+                                    config::Pane::Command(cmd) => {
+                                        let pane_id = t.split_window(
+                                            &format!("{}:{}", &cfg.name, &window_name),
+                                            None,
+                                            &panes.layout.as_ref(),
+                                        );
+                                        t.send_cmd(
+                                            &format!("{}:{}.{}", &cfg.name, &window_name, &pane_id),
+                                            cmd,
+                                        );
+                                    }
+                                }
+                            }
                         }
                         config::CmdPanes::Command(cmd) => {
-                            t.add_window(&name, &None);
-                            t.send_cmd(&format!("{}:{}", &cfg.name, &name), cmd);
+                            t.add_window(&window_name, &None);
+                            t.send_cmd(&format!("{}:{}", &cfg.name, &window_name), cmd);
                         }
                     }
                 }

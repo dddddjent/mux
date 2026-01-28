@@ -2,6 +2,7 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::{env, io};
 
+use crate::config::Layout;
 use crate::util::{expand_tilde, home_dir};
 
 pub struct Tmux {
@@ -156,7 +157,44 @@ impl Tmux {
         }
     }
 
-    pub fn add_pane(&self, name: &str) {}
+    pub fn split_window(
+        &self,
+        window: &str,
+        name: Option<&str>,
+        layout: &Option<&Layout>,
+    ) -> String {
+        let split_method = match layout {
+            Some(layout) => match layout {
+                Layout::EvenHorizontal => "-h",
+                Layout::EvenVertical => "-v",
+            },
+            None => "-h",
+        };
+
+        let out = Command::new("tmux")
+            .args(["split-window", "-t", window, split_method])
+            .output();
+        if let Ok(out) = out {
+            let id: String = String::from_utf8_lossy(&out.stdout).to_string();
+            let name = if let Some(name) = name {
+                name
+            } else {
+                return id;
+            };
+
+            let err = Command::new("tmux")
+                .args(["select-pane", "-t", &id, "-T", name])
+                .output()
+                .err();
+            if let Some(err) = err {
+                panic!("failed to exec tmux: {err}");
+            }
+            return id;
+        } else {
+            let err = out.err().unwrap();
+            panic!("failed to exec tmux: {err}");
+        }
+    }
 
     pub fn send_cmd(&self, target: &str, cmd: &str) {
         let err = Command::new("tmux")
