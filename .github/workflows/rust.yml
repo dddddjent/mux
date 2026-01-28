@@ -21,6 +21,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
+        with:
+            fetch-depth: 0
+            ref: ${{ inputs.tag }}
 
       - name: Dep
         run: rustup target add x86_64-unknown-linux-musl
@@ -31,4 +34,5 @@ jobs:
       - name: Publish GitHub Release + upload assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ inputs.tag }}
           files: target/x86_64-unknown-linux-musl/release/mux
