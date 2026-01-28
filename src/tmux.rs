@@ -187,6 +187,8 @@ impl Tmux {
                 "-t",
                 window,
                 split_method,
+                "-c",
+                "#{pane_current_path}",
                 "-P",
                 "-F",
                 "#{pane_index}",
