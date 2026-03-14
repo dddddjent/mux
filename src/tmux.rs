@@ -29,8 +29,9 @@ impl Tmux {
         } else {
             "."
         };
+        let root_dir = expand_tilde(&root_dir);
         match Command::new("tmux")
-            .args(["new", "-d", "-s", &self.session, "-c", root_dir])
+            .args(["new", "-d", "-s", &self.session, "-c", root_dir.as_str()])
             .output()
         {
             Ok(out) => {
