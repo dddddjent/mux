@@ -114,7 +114,9 @@ fn start(config_name: &str) {
             }
         }
     }
+    t.set_renumber_windows(true);
     t.remove_window(&format!("{}:{}", &cfg.name, "0"));
+    t.set_renumber_windows(false);
 
     t.attach_or_switch();
 }

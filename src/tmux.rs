@@ -167,6 +167,17 @@ impl Tmux {
         }
     }
 
+    pub fn set_renumber_windows(&self, flag: bool) {
+        let flag_str = if flag { "on" } else { "off" };
+        let err = Command::new("tmux")
+            .args(["set", "-t", &self.session, "renumber-windows", flag_str])
+            .output()
+            .err();
+        if let Some(err) = err {
+            panic!("failed to exec tmux: {err}");
+        }
+    }
+
     pub fn split_window(
         &self,
         window: &str,
