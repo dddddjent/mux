@@ -30,7 +30,7 @@ impl Tmux {
             "."
         };
         match Command::new("tmux")
-            .args(["new", "-d", "-t", &self.session, "-c", root_dir])
+            .args(["new", "-d", "-s", &self.session, "-c", root_dir])
             .output()
         {
             Ok(out) => {
