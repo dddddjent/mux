@@ -43,38 +43,8 @@ impl Tmux {
         }
     }
 
-    fn has_foreground_process(tty: &str, pane_pid: &str, own_group: &str) -> bool {
-        let out = Command::new("ps")
-            .args(["-t", tty, "-o", "pid=,pgid=,tpgid="])
-            .output()
-            .expect("failed to exec ps");
-        assert!(out.status.success(), "failed to inspect pane processes");
-        let processes: Vec<Vec<&str>> = std::str::from_utf8(&out.stdout)
-            .unwrap()
-            .lines()
-            .map(|line| line.split_whitespace().collect())
-            .collect();
-        let Some(foreground_group) = processes.first().map(|process| process[2]) else {
-            return false;
-        };
-        if foreground_group == own_group {
-            return false;
-        }
-        processes
-            .iter()
-            .any(|process| process[1] == foreground_group && process[0] != pane_pid)
-    }
-
     pub fn current_windows(session: &str, previous: &[Window]) -> Vec<Window> {
-        let own_pid = std::process::id().to_string();
-        let own_group = Command::new("ps")
-            .args(["-p", &own_pid, "-o", "pgid="])
-            .output()
-            .expect("failed to exec ps");
-        assert!(own_group.status.success(), "failed to inspect mux process");
-        let own_group = String::from_utf8_lossy(&own_group.stdout)
-            .trim()
-            .to_string();
+        let current_pane = std::env::var("TMUX_PANE").expect("mux save must run in a tmux pane");
         let mut windows = Vec::new();
         for line in Self::output(&[
             "list-windows",
@@ -92,16 +62,14 @@ impl Tmux {
                 "-t",
                 window_id,
                 "-F",
-                "#{pane_id}\t#{pane_pid}\t#{pane_tty}\t#{pane_title}",
+                "#{pane_id}\t#{pane_title}",
             ])
             .lines()
             {
-                let mut fields = line.splitn(4, '\t');
-                let pane_id = fields.next().unwrap();
-                let pane_pid = fields.next().unwrap();
-                let tty = fields.next().unwrap();
-                let title = fields.next().unwrap();
-                let commands = if Self::has_foreground_process(tty, pane_pid, &own_group) {
+                let (pane_id, title) = line.split_once('\t').unwrap();
+                let commands = if pane_id == current_pane {
+                    Vec::new()
+                } else {
                     let saved = Self::output(&[
                         "show-option",
                         "-pqv",
@@ -110,10 +78,11 @@ impl Tmux {
                         "@mux_running_command",
                     ]);
                     let saved = saved.strip_suffix('\n').unwrap_or(&saved);
-                    assert!(!saved.is_empty(), "no command recorded for pane {pane_id}; reload zsh and restart its command");
-                    vec![saved.to_string()]
-                } else {
-                    Vec::new()
+                    if saved.is_empty() {
+                        Vec::new()
+                    } else {
+                        vec![saved.to_string()]
+                    }
                 };
                 panes.push(Pane::PaneWithCommands(BTreeMap::from([(
                     title.to_string(),
