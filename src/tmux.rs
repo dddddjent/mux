@@ -1,8 +1,9 @@
+use std::collections::BTreeMap;
 use std::io;
 use std::os::unix::process::CommandExt;
 use std::process::Command;
 
-use crate::config::Layout;
+use crate::config::{CmdPanes, Layout, Pane, Panes, Window};
 use crate::util::{expand_tilde, home_dir};
 
 pub struct Tmux {
@@ -11,6 +12,138 @@ pub struct Tmux {
 }
 
 impl Tmux {
+    fn output(args: &[&str]) -> String {
+        let out = Command::new("tmux")
+            .args(args)
+            .output()
+            .expect("failed to exec tmux");
+        if !out.status.success() {
+            panic!("tmux failed: {}", String::from_utf8_lossy(&out.stderr));
+        }
+        String::from_utf8_lossy(&out.stdout).to_string()
+    }
+
+    pub fn foreground_session_name() -> String {
+        let session = Self::get_current_session_name().expect("mux save must run inside tmux");
+        let attached = Self::output(&["display-message", "-p", "-F", "#{session_attached}"]);
+        assert!(
+            attached.trim() != "0",
+            "mux save requires an attached tmux session"
+        );
+        session
+    }
+
+    pub fn config_name() -> Option<String> {
+        let name = Self::output(&["display-message", "-p", "-F", "#{@mux_config}"]);
+        let name = name.trim();
+        if name.is_empty() {
+            None
+        } else {
+            Some(name.to_string())
+        }
+    }
+
+    fn has_foreground_process(tty: &str, pane_pid: &str, own_group: &str) -> bool {
+        let out = Command::new("ps")
+            .args(["-t", tty, "-o", "pid=,pgid=,tpgid="])
+            .output()
+            .expect("failed to exec ps");
+        assert!(out.status.success(), "failed to inspect pane processes");
+        let processes: Vec<Vec<&str>> = std::str::from_utf8(&out.stdout)
+            .unwrap()
+            .lines()
+            .map(|line| line.split_whitespace().collect())
+            .collect();
+        let Some(foreground_group) = processes.first().map(|process| process[2]) else {
+            return false;
+        };
+        if foreground_group == own_group {
+            return false;
+        }
+        processes
+            .iter()
+            .any(|process| process[1] == foreground_group && process[0] != pane_pid)
+    }
+
+    pub fn current_windows(session: &str, previous: &[Window]) -> Vec<Window> {
+        let own_pid = std::process::id().to_string();
+        let own_group = Command::new("ps")
+            .args(["-p", &own_pid, "-o", "pgid="])
+            .output()
+            .expect("failed to exec ps");
+        assert!(own_group.status.success(), "failed to inspect mux process");
+        let own_group = String::from_utf8_lossy(&own_group.stdout)
+            .trim()
+            .to_string();
+        let mut windows = Vec::new();
+        for line in Self::output(&[
+            "list-windows",
+            "-t",
+            session,
+            "-F",
+            "#{window_id}\t#{window_name}",
+        ])
+        .lines()
+        {
+            let (window_id, name) = line.split_once('\t').unwrap();
+            let mut panes = Vec::new();
+            for line in Self::output(&[
+                "list-panes",
+                "-t",
+                window_id,
+                "-F",
+                "#{pane_id}\t#{pane_pid}\t#{pane_tty}\t#{pane_title}",
+            ])
+            .lines()
+            {
+                let mut fields = line.splitn(4, '\t');
+                let pane_id = fields.next().unwrap();
+                let pane_pid = fields.next().unwrap();
+                let tty = fields.next().unwrap();
+                let title = fields.next().unwrap();
+                let commands = if Self::has_foreground_process(tty, pane_pid, &own_group) {
+                    let saved = Self::output(&[
+                        "show-option",
+                        "-pqv",
+                        "-t",
+                        pane_id,
+                        "@mux_running_command",
+                    ]);
+                    let saved = saved.strip_suffix('\n').unwrap_or(&saved);
+                    assert!(!saved.is_empty(), "no command recorded for pane {pane_id}; reload zsh and restart its command");
+                    vec![saved.to_string()]
+                } else {
+                    Vec::new()
+                };
+                panes.push(Pane::PaneWithCommands(BTreeMap::from([(
+                    title.to_string(),
+                    commands,
+                )])));
+            }
+            let (layout, root) = previous
+                .iter()
+                .find_map(|window| match window {
+                    Window::WindowWithPanes(map) => match map.get(name) {
+                        Some(CmdPanes::Panes(panes)) => {
+                            Some((panes.layout.clone(), panes.root.clone()))
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                })
+                .unwrap_or((None, None));
+            windows.push(Window::WindowWithPanes(BTreeMap::from([(
+                name.to_string(),
+                CmdPanes::Panes(Panes {
+                    panes,
+                    layout,
+                    root,
+                }),
+            )])));
+        }
+        windows
+    }
+
     pub fn new(session: &str, root_dir: &str) -> Tmux {
         let t = Tmux {
             session: String::from(session),
@@ -39,6 +172,16 @@ impl Tmux {
             }
             Err(err) => panic!("failed to exec tmux: {err}"),
         }
+    }
+
+    pub fn set_config_name(&self, config_name: &str) {
+        Self::output(&[
+            "set-option",
+            "-t",
+            &self.session,
+            "@mux_config",
+            config_name,
+        ]);
     }
 
     fn get_current_session_name() -> io::Result<String> {

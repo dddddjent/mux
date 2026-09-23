@@ -20,6 +20,8 @@ enum Command {
     #[command(alias = "s")]
     Start { config_name: String },
 
+    Save,
+
     #[command(alias = "r", aliases=["rm", "delete", "d"])]
     Remove { config_name: String },
 
@@ -49,6 +51,7 @@ fn start(config_name: &str) {
     }
 
     t.start_in_background();
+    t.set_config_name(config_name);
 
     let windows = &cfg.windows;
     for window in windows {
@@ -126,11 +129,25 @@ fn remove(config_name: &str) {
     println!("removed config: {config_name}");
 }
 
+fn save() {
+    let session = tmux::Tmux::foreground_session_name();
+    let config_name = tmux::Tmux::config_name()
+        .expect("this tmux session has no recorded mux config; start a new session with mux start");
+    let mut cfg = config::parse_config(&config_name).expect("failed to load config");
+    assert_eq!(cfg.name, session, "config name does not match tmux session");
+    cfg.windows = tmux::Tmux::current_windows(&session, &cfg.windows);
+    let yaml = serde_yml::to_string(&cfg).expect("failed to serialize config");
+    std::fs::write(config::config_dir().join(format!("{config_name}.yml")), yaml)
+        .expect("failed to save config");
+    println!("saved config: {config_name}");
+}
+
 fn main() {
     let cli = Cli::parse();
     match &cli.cmd {
         Command::Open { config_name } => config::open_or_create_config(config_name),
         Command::Start { config_name } => start(config_name),
+        Command::Save => save(),
         Command::Remove { config_name } => remove(config_name),
         Command::List => config::list_configs(),
         Command::KillSession => tmux::Tmux::kill_session(),

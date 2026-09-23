@@ -28,7 +28,7 @@ pub enum CmdPanes {
     Command(String),
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 pub enum Layout {
     #[serde(rename = "even-horizontal")]
     EvenHorizontal,
@@ -43,9 +43,9 @@ fn default_layout() -> Option<Layout> {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Panes {
     pub panes: Vec<Pane>,
-    #[serde(default = "default_layout")]
+    #[serde(default = "default_layout", skip_serializing_if = "Option::is_none")]
     pub layout: Option<Layout>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub root: Option<String>,
 }
 
